@@ -55,11 +55,11 @@ OUTPUT_SHAPE = (64, 128)
 
 CHARS = common.CHARS + " "
 
-
+# returns image corresponding to each character
 def make_char_ims(font_path, output_height):
-    font_size = output_height * 4
+    font_size = output_height * 4 # TODO; why?
 
-    font = ImageFont.truetype(font_path, font_size)
+    font = ImageFont.truetype(font_path, font_size) # 
 
     height = max(font.getsize(c)[1] for c in CHARS)
 
@@ -67,11 +67,11 @@ def make_char_ims(font_path, output_height):
         width = font.getsize(c)[0]
         im = Image.new("RGBA", (width, height), (0, 0, 0))
 
-        draw = ImageDraw.Draw(im)
-        draw.text((0, 0), c, (255, 255, 255), font=font)
-        scale = float(output_height) / height
-        im = im.resize((int(width * scale), output_height), Image.ANTIALIAS)
-        yield c, numpy.array(im)[:, :, 0].astype(numpy.float32) / 255.
+        draw = ImageDraw.Draw(im) # getting a drawing context, all drawing commands will be executed on 'im'
+        draw.text((0, 0), c, (255, 255, 255), font=font) # adds text to the image with given font at given location, here it writes value in 'c'
+        scale = float(output_height) / height # scale for image resizing.
+        im = im.resize((int(width * scale), output_height), Image.ANTIALIAS) # resized to desired output size.
+        yield c, numpy.array(im)[:, :, 0].astype(numpy.float32) / 255. # normalized image.
 
 
 def euler_to_mat(yaw, pitch, roll):
@@ -156,7 +156,7 @@ def make_affine_transform(from_shape, to_shape,
 
     return M, out_of_bounds
 
-
+# TODO: adapt for our use case
 def generate_code():
     return "{}{}{}{} {}{}{}".format(
         random.choice(common.LETTERS),
@@ -183,33 +183,48 @@ def rounded_rect(shape, radius):
     return out
 
 
+# TODO also pass the newline position(s)
+''' def generate_plate(font_height, char_ims, num_rows, newline_pos, interrow_spacing) '''
 def generate_plate(font_height, char_ims):
     h_padding = random.uniform(0.2, 0.4) * font_height
     v_padding = random.uniform(0.1, 0.3) * font_height
     spacing = font_height * random.uniform(-0.05, 0.05)
+    #TODO: add vertical spacing between rows
     radius = 1 + int(font_height * 0.1 * random.random())
 
     code = generate_code()
-    text_width = sum(char_ims[c].shape[1] for c in code)
-    text_width += (len(code) - 1) * spacing
+    text_width = sum(char_ims[c].shape[1] for c in code) # adds width of each character image
+    text_width += (len(code) - 1) * spacing # also adds the spacing between characters
 
     out_shape = (int(font_height + v_padding * 2),
                  int(text_width + h_padding * 2))
 
     text_color, plate_color = pick_colors()
     
-    text_mask = numpy.zeros(out_shape)
+    text_mask = numpy.zeros(out_shape) # points to the area in number-plate with text
     
     x = h_padding
-    y = v_padding 
+    y = v_padding
+    # TODO
+    '''row_id = 0 # assuming 0 as starting index into newline_pos'''
     for c in code:
-        char_im = char_ims[c]
+        char_im = char_ims[c] # extracts image corresponding to character 'c' in the code
         ix, iy = int(x), int(y)
-        text_mask[iy:iy + char_im.shape[0], ix:ix + char_im.shape[1]] = char_im
-        x += char_im.shape[1] + spacing
+        text_mask[iy:iy + char_im.shape[0], ix:ix + char_im.shape[1]] = char_im # writes the number at position starting from iy, ix
+        x += char_im.shape[1] + spacing # updates the start position for next character
+        # TODO here, it must update y also for multiline number-plate
+        '''
+        if (num_rows > 1 && row_id < num_rows && pos == newline_pos[row_id])
+            y += row_id * interrow_spacing # next row
+            x = h_padding # reset x
+            row_id += 1
+            pos = 0
+        else
+           pos += 1 # note x and pos are different, pos represents the index, x represents the pixel location
+        '''
 
     plate = (numpy.ones(out_shape) * plate_color * (1. - text_mask) +
-             numpy.ones(out_shape) * text_color * text_mask)
+             numpy.ones(out_shape) * text_color * text_mask) # no need to change this for multi-line feature
 
     return plate, rounded_rect(out_shape, radius), code.replace(" ", "")
 
@@ -231,9 +246,11 @@ def generate_bg(num_bg_images):
 
 
 def generate_im(char_ims, num_bg_images):
-    bg = generate_bg(num_bg_images)
+    bg = generate_bg(num_bg_images) # generates background image
 
-    plate, plate_mask, code = generate_plate(FONT_HEIGHT, char_ims)
+    #TODO
+    '''plate, plate_mask, code = generate_plate(font_height, char_ims, num_rows, newline_pos, interrow_spacing)'''
+    plate, plate_mask, code = generate_plate(FONT_HEIGHT, char_ims) 
     
     M, out_of_bounds = make_affine_transform(
                             from_shape=plate.shape,
@@ -243,10 +260,10 @@ def generate_im(char_ims, num_bg_images):
                             rotation_variation=1.0,
                             scale_variation=1.5,
                             translation_variation=1.2)
-    plate = cv2.warpAffine(plate, M, (bg.shape[1], bg.shape[0]))
-    plate_mask = cv2.warpAffine(plate_mask, M, (bg.shape[1], bg.shape[0]))
+    plate = cv2.warpAffine(plate, M, (bg.shape[1], bg.shape[0])) # applies transformations to the number-plate image
+    plate_mask = cv2.warpAffine(plate_mask, M, (bg.shape[1], bg.shape[0])) # similarly also transforms the plate mark
 
-    out = plate * plate_mask + bg * (1.0 - plate_mask)
+    out = plate * plate_mask + bg * (1.0 - plate_mask) # blends the number plate image with the background image
 
     out = cv2.resize(out, (OUTPUT_SHAPE[1], OUTPUT_SHAPE[0]))
 
@@ -259,10 +276,10 @@ def generate_im(char_ims, num_bg_images):
 def load_fonts(folder_path):
     font_char_ims = {}
     fonts = [f for f in os.listdir(folder_path) if f.endswith('.ttf')]
-    for font in fonts:
+    for font in fonts: # for each font in the fonts directory
         font_char_ims[font] = dict(make_char_ims(os.path.join(folder_path,
                                                               font),
-                                                 FONT_HEIGHT))
+                                                 FONT_HEIGHT)) # stores the images corresponding to each character in the font
     return fonts, font_char_ims
 
 
@@ -275,10 +292,10 @@ def generate_ims():
 
     """
     variation = 1.0
-    fonts, font_char_ims = load_fonts(FONT_DIR)
-    num_bg_images = len(os.listdir("bgs"))
-    while True:
-        yield generate_im(font_char_ims[random.choice(fonts)], num_bg_images)
+    fonts, font_char_ims = load_fonts(FONT_DIR) # generates images corresonding to fonts
+    num_bg_images = len(os.listdir("bgs")) # reads the number of background images
+    while True: #TODO how to we come out of it?
+        yield generate_im(font_char_ims[random.choice(fonts)], num_bg_images) # passes random font images to be applied over background images
 
 
 if __name__ == "__main__":
@@ -289,4 +306,3 @@ if __name__ == "__main__":
                                                "1" if p else "0")
         print fname
         cv2.imwrite(fname, im * 255.)
-
