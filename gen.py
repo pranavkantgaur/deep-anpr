@@ -158,14 +158,15 @@ def make_affine_transform(from_shape, to_shape,
 
 # TODO: adapt for our use case
 def generate_code():
-    return "{}{}{}{} {}{}{}".format(
+    return "{}{}{} {}{}{}".format(
         random.choice(common.LETTERS),
         random.choice(common.LETTERS),
         random.choice(common.DIGITS),
         random.choice(common.DIGITS),
         random.choice(common.LETTERS),
         random.choice(common.LETTERS),
-        random.choice(common.LETTERS))
+#        random.choice(common.LETTERS)
+        )
 
 
 def rounded_rect(shape, radius):
@@ -184,8 +185,8 @@ def rounded_rect(shape, radius):
 
 
 # TODO also pass the newline position(s)
-''' def generate_plate(font_height, char_ims, num_rows, newline_pos, interrow_spacing) '''
-def generate_plate(font_height, char_ims):
+def generate_plate(font_height, char_ims, num_rows, newline_pos, interrow_spacing_pixels): 
+#def generate_plate(font_height, char_ims):
     h_padding = random.uniform(0.2, 0.4) * font_height
     v_padding = random.uniform(0.1, 0.3) * font_height
     spacing = font_height * random.uniform(-0.05, 0.05)
@@ -196,32 +197,34 @@ def generate_plate(font_height, char_ims):
     text_width = sum(char_ims[c].shape[1] for c in code) # adds width of each character image
     text_width += (len(code) - 1) * spacing # also adds the spacing between characters
 
-    out_shape = (int(font_height + v_padding * 2),
-                 int(text_width + h_padding * 2))
+    out_shape = (int(font_height * num_rows + interrow_spacing_pixels * (num_rows - 1) + v_padding * 2),
+                 int(text_width + h_padding * 2)) # changed output size TODO
 
     text_color, plate_color = pick_colors()
     
     text_mask = numpy.zeros(out_shape) # points to the area in number-plate with text
-    
+    print (text_mask.shape) 
     x = h_padding
     y = v_padding
     # TODO
-    '''row_id = 0 # assuming 0 as starting index into newline_pos'''
+    row_id = 0 # assuming 0 as starting index into newline_pos
+    pos = 0
     for c in code:
         char_im = char_ims[c] # extracts image corresponding to character 'c' in the code
         ix, iy = int(x), int(y)
         text_mask[iy:iy + char_im.shape[0], ix:ix + char_im.shape[1]] = char_im # writes the number at position starting from iy, ix
         x += char_im.shape[1] + spacing # updates the start position for next character
         # TODO here, it must update y also for multiline number-plate
-        '''
-        if (num_rows > 1 && row_id < num_rows && pos == newline_pos[row_id])
-            y += row_id * interrow_spacing # next row
+        
+        if ((num_rows > 1) and (row_id < num_rows - 1) and (pos == newline_pos[row_id])):
+            y += (font_height + interrow_spacing_pixels)  # next row
             x = h_padding # reset x
             row_id += 1
             pos = 0
-        else
+            
+        else:
            pos += 1 # note x and pos are different, pos represents the index, x represents the pixel location
-        '''
+        
 
     plate = (numpy.ones(out_shape) * plate_color * (1. - text_mask) +
              numpy.ones(out_shape) * text_color * text_mask) # no need to change this for multi-line feature
@@ -232,8 +235,9 @@ def generate_plate(font_height, char_ims):
 def generate_bg(num_bg_images):
     found = False
     while not found:
-        fname = "bgs/{:08d}.jpg".format(random.randint(0, num_bg_images - 1))
-        bg = cv2.imread(fname, cv2.CV_LOAD_IMAGE_GRAYSCALE) / 255.
+        fname = "bgs/{:01d}.jpg".format(random.randint(0, num_bg_images - 1))
+        bg = cv2.imread(fname, cv2.IMREAD_GRAYSCALE) / 255.
+#        bg = cv2.imread(fname, cv2.IMREAD_GRAYSCALE)
         if (bg.shape[1] >= OUTPUT_SHAPE[1] and
             bg.shape[0] >= OUTPUT_SHAPE[0]):
             found = True
@@ -249,8 +253,11 @@ def generate_im(char_ims, num_bg_images):
     bg = generate_bg(num_bg_images) # generates background image
 
     #TODO
-    '''plate, plate_mask, code = generate_plate(font_height, char_ims, num_rows, newline_pos, interrow_spacing)'''
-    plate, plate_mask, code = generate_plate(FONT_HEIGHT, char_ims) 
+    num_rows=2
+    newline_pos = [2]
+    interrow_spacing_pixels = 2
+    plate, plate_mask, code = generate_plate(FONT_HEIGHT, char_ims, num_rows, newline_pos, interrow_spacing_pixels)
+    #plate, plate_mask, code = generate_plate(FONT_HEIGHT, char_ims) 
     
     M, out_of_bounds = make_affine_transform(
                             from_shape=plate.shape,
