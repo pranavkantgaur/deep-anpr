@@ -156,17 +156,25 @@ def make_affine_transform(from_shape, to_shape,
 
     return M, out_of_bounds
 
-# TODO: adapt for our use case
+# TODO: adapt for our use case, should also generate space character at random
 def generate_code():
-    return "{}{}{} {}{}{}".format(
-        random.choice(common.LETTERS),
-        random.choice(common.LETTERS),
-        random.choice(common.DIGITS),
-        random.choice(common.DIGITS),
-        random.choice(common.LETTERS),
-        random.choice(common.LETTERS),
-#        random.choice(common.LETTERS)
-        )
+   separator = random.choice(common.SEPARATORS) 
+   return "{}{}{}{}{}{}{}{}{}{}{}{}".format(
+   random.choice(common.STATE_CODE),
+   separator,
+   random.choice(common.DIGITS),
+   random.choice(common.DIGITS),
+   separator,
+   random.choice(common.LETTERS),
+   random.choice(common.LETTERS),
+#   random.choice(common.LETTERS),
+   separator,
+   random.choice(common.DIGITS),
+   random.choice(common.DIGITS),
+   random.choice(common.DIGITS),
+   random.choice(common.DIGITS)
+   )
+    
 
 
 def rounded_rect(shape, radius):
@@ -194,6 +202,7 @@ def generate_plate(font_height, char_ims, num_rows, newline_pos, interrow_spacin
     radius = 1 + int(font_height * 0.1 * random.random())
 
     code = generate_code()
+    print ('code:', code)
     text_width = sum(char_ims[c].shape[1] for c in code) # adds width of each character image
     text_width += (len(code) - 1) * spacing # also adds the spacing between characters
 
@@ -253,9 +262,9 @@ def generate_im(char_ims, num_bg_images):
     bg = generate_bg(num_bg_images) # generates background image
 
     #TODO
-    num_rows=2
-    newline_pos = [2]
-    interrow_spacing_pixels = 2
+    num_rows=1
+    newline_pos = []
+    interrow_spacing_pixels = -1
     plate, plate_mask, code = generate_plate(FONT_HEIGHT, char_ims, num_rows, newline_pos, interrow_spacing_pixels)
     #plate, plate_mask, code = generate_plate(FONT_HEIGHT, char_ims) 
     
