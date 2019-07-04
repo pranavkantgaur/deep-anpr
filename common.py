@@ -27,6 +27,8 @@ __all__ = (
     'DIGITS',
     'LETTERS',
     'CHARS',
+    'STATE_CODE',
+    'SEPARATORS',
     'sigmoid',
     'softmax',
 )
@@ -35,8 +37,13 @@ import numpy
 
 
 DIGITS = "0123456789"
-LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-CHARS = LETTERS + DIGITS
+LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ-. "
+STATE_CODE = ['AP','AR','AS','BR','CG','GA','GJ','HR','HP','JK','JH','KA','KL',
+	      'MP','MH','MN','ML','MZ','NL','OD','PB','RJ','SK','TN','TS','TR','UK',
+	      'UP','WB','AN','CH','DN','DD','DL','LD','PY']
+SEPARATORS = [' ', '-', '.']
+
+CHARS = LETTERS + DIGITS # represents the entire gamut of characters, used for generating dictionary of character images.
 
 def softmax(a):
     exps = numpy.exp(a.astype(numpy.float64))
@@ -44,4 +51,3 @@ def softmax(a):
 
 def sigmoid(a):
   return 1. / (1. + numpy.exp(-a))
-
